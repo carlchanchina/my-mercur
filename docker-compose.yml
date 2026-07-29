@@ -1,0 +1,106 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mercur}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mercur}
+      POSTGRES_DB: ${POSTGRES_DB:-mercur}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports: []
+    networks: [mercur]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mercur}"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    ports: []
+    networks: [mercur]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: production
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      STORE_CORS: ${STORE_CORS}
+      ADMIN_CORS: ${ADMIN_CORS}
+      VENDOR_CORS: ${VENDOR_CORS}
+      AUTH_CORS: ${AUTH_CORS}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      FILE_BACKEND_URL: ${FILE_BACKEND_URL}
+      MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL}
+      MEDUSA_ADMIN_ONBOARDING_TYPE: ${MEDUSA_ADMIN_ONBOARDING_TYPE:-default}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM: ${RESEND_FROM}
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      TALKJS_APP_ID: ${TALKJS_APP_ID}
+      TALKJS_SECRET_KEY: ${TALKJS_SECRET_KEY}
+      TALKJS_PUBLIC_KEY: ${TALKJS_PUBLIC_KEY}
+      ALGOLIA_APP_ID: ${ALGOLIA_APP_ID}
+      ALGOLIA_ADMIN_API_KEY: ${ALGOLIA_ADMIN_API_KEY}
+      ALGOLIA_INDEX_PREFIX: ${ALGOLIA_INDEX_PREFIX:-mercur}
+      PORT: "9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    networks: [mercur]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health || exit 1"]
+      interval: 20s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - api_static:/app/.medusa/server/static
+
+  storefront:
+    build:
+      context: apps/storefront
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
+      NEXT_PUBLIC_ALGOLIA_APP_ID: ${NEXT_PUBLIC_ALGOLIA_APP_ID}
+      NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY: ${NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY}
+      NEXT_PUBLIC_ALGOLIA_INDEX_PREFIX: ${NEXT_PUBLIC_ALGOLIA_INDEX_PREFIX}
+      NEXT_PUBLIC_TALKJS_APP_ID: ${NEXT_PUBLIC_TALKJS_APP_ID}
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks: [mercur]
+
+volumes:
+  postgres_data:
+  redis_data:
+  api_static:
+
+networks:
+  mercur:
