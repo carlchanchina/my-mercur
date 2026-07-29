@@ -15,7 +15,8 @@
     "preview": "vite preview --port 7000"
   },
   "dependencies": {
-    "@mercurjs/admin": "2.2.1"
+    "@mercurjs/admin": "2.2.1",
+    "i18next": "^25.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1"
