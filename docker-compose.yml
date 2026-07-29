@@ -34,6 +34,8 @@ services:
       dockerfile: docker/api/Dockerfile
       target: production
     restart: unless-stopped
+    env_file:
+      - packages/api/.env
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -74,6 +76,38 @@ services:
     volumes:
       - api_static:/app/.medusa/server/static
 
+  admin:
+    build:
+      context: .
+      dockerfile: docker/admin/Dockerfile
+      target: production
+    restart: unless-stopped
+    environment:
+      VITE_MEDUSA_BACKEND_URL: ${VITE_MEDUSA_BACKEND_URL}
+      PORT: "80"
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "7000:80"
+    networks: [mercur]
+
+  vendor:
+    build:
+      context: .
+      dockerfile: docker/vendor/Dockerfile
+      target: production
+    restart: unless-stopped
+    environment:
+      VITE_MEDUSA_BACKEND_URL: ${VITE_MEDUSA_BACKEND_URL}
+      PORT: "80"
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "7001:80"
+    networks: [mercur]
+
   storefront:
     build:
       context: apps/storefront
@@ -83,6 +117,7 @@ services:
     environment:
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL}
       NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}
       NEXT_PUBLIC_ALGOLIA_APP_ID: ${NEXT_PUBLIC_ALGOLIA_APP_ID}
       NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY: ${NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY}
       NEXT_PUBLIC_ALGOLIA_INDEX_PREFIX: ${NEXT_PUBLIC_ALGOLIA_INDEX_PREFIX}
