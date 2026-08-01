@@ -15,7 +15,7 @@ RUN apk add --no-cache curl bash && \
   if [ -f bun.lock ]; then \
     curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11" && \
     ln -sf $BUN_INSTALL/bin/bun /usr/local/bin/bun && \
-    bun install --frozen-lockfile; \
+    bun install --frozen-lockfile --backend=copyfile; \
   elif [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
   elif [ -f yarn.lock ]; then corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci; \
