@@ -7,9 +7,15 @@ COPY packages/api/package.json ./packages/api/
 COPY packages/*/package.json ./packages/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/vendor/package.json ./apps/vendor/
+COPY apps/storefront/package.json ./apps/storefront/
 
-RUN corepack enable && \
-  if [ -f bun.lock ]; then corepack prepare bun@1.3.11 --activate && bun install --frozen-lockfile; \
+ENV BUN_INSTALL=/usr/local/share/bun
+RUN apk add --no-cache curl && \
+  corepack enable && \
+  if [ -f bun.lock ]; then \
+    curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11" && \
+    ln -sf $BUN_INSTALL/bin/bun /usr/local/bin/bun && \
+    bun install --frozen-lockfile; \
   elif [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
   elif [ -f yarn.lock ]; then corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci; \

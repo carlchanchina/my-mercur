@@ -7,7 +7,19 @@ COPY packages/*/package.json ./packages/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/vendor/package.json ./apps/vendor/
 COPY apps/storefront/package.json ./apps/storefront/
-RUN if [ -f bun.lock ]; then corepack enable && corepack prepare bun@1.3.11 --activate && bun install --frozen-lockfile; elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install --frozen-lockfile; elif [ -f yarn.lock ]; then corepack enable && yarn install --frozen-lockfile; elif [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+ENV BUN_INSTALL=/usr/local/share/bun
+RUN apk add --no-cache curl && \
+  corepack enable && \
+  if [ -f bun.lock ]; then \
+    curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11" && \
+    ln -sf $BUN_INSTALL/bin/bun /usr/local/bin/bun && \
+    bun install --frozen-lockfile; \
+  elif [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
+  elif [ -f yarn.lock ]; then corepack prepare yarn@1.22.22 --activate && yarn install --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  else npm install; \
+  fi
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
