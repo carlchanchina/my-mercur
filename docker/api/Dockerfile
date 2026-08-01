@@ -7,7 +7,6 @@ COPY packages/api/package.json ./packages/api/
 COPY packages/*/package.json ./packages/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/vendor/package.json ./apps/vendor/
-COPY apps/storefront/package.json ./apps/storefront/
 
 RUN corepack enable && \
   if [ -f bun.lock ]; then corepack prepare bun@1.3.11 --activate && bun install --frozen-lockfile; \
@@ -21,6 +20,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Build the admin & vendor dashboard panels first so bundle-dashboards.mjs can
+# copy their dist into the Medusa server artifact (it expects apps/<name>/dist).
+ARG VITE_MERCUR_BACKEND_URL
+ENV VITE_MERCUR_BACKEND_URL=$VITE_MERCUR_BACKEND_URL
+RUN cd apps/admin && npm run build
+RUN cd apps/vendor && npm run build
 
 # Build API and bundle dashboards
 RUN cd packages/api && npm run build

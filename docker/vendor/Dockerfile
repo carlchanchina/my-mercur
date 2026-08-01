@@ -12,8 +12,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Vite bakes the backend URL at build time, so it must be supplied as a build arg.
+ARG VITE_MERCUR_BACKEND_URL
+ENV VITE_MERCUR_BACKEND_URL=$VITE_MERCUR_BACKEND_URL
 RUN cd apps/vendor && npm run build
-FROM nginx:1.27-alpine
+
+FROM nginx:1.27-alpine AS production
 COPY --from=builder /app/apps/vendor/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

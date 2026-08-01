@@ -52,7 +52,7 @@ Set these in Dokploy project env, do NOT commit real secrets.
 - `NEXT_PUBLIC_TALKJS_APP_ID=`
 
 ### Dashboards
-- `VITE_MEDUSA_BACKEND_URL=https://api.example.com`
+- `VITE_MERCUR_BACKEND_URL=https://api.example.com`
 
 ## 5. First Deploy / Database Migrations
 - First deploy can fail until DB is ready.
