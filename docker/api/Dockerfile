@@ -50,17 +50,21 @@ FROM node:20-alpine AS production
 RUN apk add --no-cache curl
 WORKDIR /app
 
-# Copy bundled API server and dashboards
-COPY --from=builder /app/packages/api/.medusa/server ./server
+# Medusa v2 runs in production via the medusa CLI from packages/api
+# (`medusa start`), which loads the compiled .medusa/server build. The CLI lives
+# at packages/api/node_modules/.bin/medusa, and bun's isolated layout symlinks
+# packages/api/node_modules entries into the root node_modules/.bun store. So we
+# must copy BOTH the root store and the full packages/api (source + .medusa
+# build + its own node_modules). Copying only .medusa/server + root node_modules
+# breaks the server (no medusa CLI, missing runtime deps).
 COPY --from=builder /app/node_modules ./node_modules
-
-# Copy built static assets if any
-COPY --from=builder /app/packages/api/public ./public
+COPY --from=builder /app/packages/api ./packages/api
 
 ENV NODE_ENV=production
 ENV PORT=9000
 
+WORKDIR /app/packages/api
 EXPOSE 9000
 
-# Medusa server
-CMD ["node", "server/server.js"]
+# Medusa production server. Reads MEDUSA_WORKER_MODE (server|worker|shared).
+CMD ["./node_modules/.bin/medusa", "start"]
