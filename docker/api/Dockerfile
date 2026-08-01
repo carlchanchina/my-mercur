@@ -24,7 +24,12 @@ RUN apk add --no-cache curl bash && \
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the whole deps workspace, not just the root node_modules. bun uses an
+# isolated layout: each workspace's direct deps live in <workspace>/node_modules
+# as symlinks into the root node_modules/.bun store. Copying only the root
+# node_modules drops apps/*/node_modules (@mercurjs/*, @types/node) and
+# packages/api/node_modules (@medusajs/framework), breaking tsc.
+COPY --from=deps /app ./
 COPY . .
 
 # Build the admin & vendor dashboard panels first so bundle-dashboards.mjs can
@@ -36,6 +41,10 @@ RUN cd apps/vendor && npm run build
 
 # Build API and bundle dashboards
 RUN cd packages/api && npm run build
+
+# The production stage copies static assets from packages/api/public. That directory
+# only exists when the project ships one; create it if absent so the COPY never fails.
+RUN mkdir -p /app/packages/api/public
 
 FROM node:20-alpine AS production
 RUN apk add --no-cache curl

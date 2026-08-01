@@ -22,7 +22,12 @@ RUN apk add --no-cache curl bash && \
   fi
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy the whole deps workspace, not just the root node_modules. bun uses an
+# isolated layout: each workspace's direct deps live in <workspace>/node_modules
+# as symlinks into the root node_modules/.bun store. Copying only the root
+# node_modules drops apps/vendor/node_modules (e.g. @mercurjs/vendor, @types/node)
+# and packages/api/node_modules (@medusajs/framework), breaking tsc.
+COPY --from=deps /app ./
 COPY . .
 
 # Vite bakes the backend URL at build time, so it must be supplied as a build arg.
