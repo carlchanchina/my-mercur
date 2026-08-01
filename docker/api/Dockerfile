@@ -10,7 +10,7 @@ COPY apps/vendor/package.json ./apps/vendor/
 COPY apps/storefront/package.json ./apps/storefront/
 
 ENV BUN_INSTALL=/usr/local/share/bun
-RUN apk add --no-cache curl && \
+RUN apk add --no-cache curl bash && \
   corepack enable && \
   if [ -f bun.lock ]; then \
     curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.11" && \
