@@ -1,8 +1,8 @@
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package.json bun.lock* package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-COPY packages/api/package.json ./packages/api/
+
+COPY package.json bun.lock* ./
 COPY packages/*/package.json ./packages/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/vendor/package.json ./apps/vendor/
@@ -20,13 +20,9 @@ RUN apk add --no-cache curl bash && \
   elif [ -f package-lock.json ]; then npm ci; \
   else npm install; \
   fi
+
 FROM node:20-alpine AS builder
 WORKDIR /app
-# Copy the whole deps workspace, not just the root node_modules. bun uses an
-# isolated layout: each workspace's direct deps live in <workspace>/node_modules
-# as symlinks into the root node_modules/.bun store. Copying only the root
-# node_modules drops apps/vendor/node_modules (e.g. @mercurjs/vendor, @types/node)
-# and packages/api/node_modules (@medusajs/framework), breaking tsc.
 COPY --from=deps /app ./
 COPY . .
 
@@ -36,6 +32,7 @@ ENV VITE_MERCUR_BACKEND_URL=$VITE_MERCUR_BACKEND_URL
 RUN cd apps/vendor && npm run build
 
 FROM nginx:1.27-alpine AS production
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/apps/vendor/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

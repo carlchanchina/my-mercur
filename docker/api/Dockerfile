@@ -2,7 +2,7 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json bun.lock* package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+COPY package.json bun.lock* ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/*/package.json ./packages/
 COPY apps/admin/package.json ./apps/admin/
@@ -24,16 +24,10 @@ RUN apk add --no-cache curl bash && \
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-# Copy the whole deps workspace, not just the root node_modules. bun uses an
-# isolated layout: each workspace's direct deps live in <workspace>/node_modules
-# as symlinks into the root node_modules/.bun store. Copying only the root
-# node_modules drops apps/*/node_modules (@mercurjs/*, @types/node) and
-# packages/api/node_modules (@medusajs/framework), breaking tsc.
 COPY --from=deps /app ./
 COPY . .
 
-# Build the admin & vendor dashboard panels first so bundle-dashboards.mjs can
-# copy their dist into the Medusa server artifact (it expects apps/<name>/dist).
+# Vite bakes the backend URL at build time, so it must be supplied as a build arg.
 ARG VITE_MERCUR_BACKEND_URL
 ENV VITE_MERCUR_BACKEND_URL=$VITE_MERCUR_BACKEND_URL
 RUN cd apps/admin && npm run build
@@ -51,14 +45,11 @@ RUN apk add --no-cache curl
 WORKDIR /app
 
 # Medusa v2 runs in production via the medusa CLI from packages/api
-# (`medusa start`), which loads the compiled .medusa/server build. The CLI lives
-# at packages/api/node_modules/.bin/medusa, and bun's isolated layout symlinks
-# packages/api/node_modules entries into the root node_modules/.bun store. So we
-# must copy BOTH the root store and the full packages/api (source + .medusa
-# build + its own node_modules). Copying only .medusa/server + root node_modules
-# breaks the server (no medusa CLI, missing runtime deps).
+# (`medusa start`), which loads the compiled .medusa/server build.
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/api ./packages/api
+COPY --from=builder /app/apps/admin/dist ./apps/admin/dist
+COPY --from=builder /app/apps/vendor/dist ./apps/vendor/dist
 
 ENV NODE_ENV=production
 ENV PORT=9000
@@ -67,4 +58,7 @@ WORKDIR /app/packages/api
 EXPOSE 9000
 
 # Medusa production server. Reads MEDUSA_WORKER_MODE (server|worker|shared).
-CMD ["./node_modules/.bin/medusa", "start"]
+# Run migrations before starting the server.
+COPY scripts/start.sh /app/scripts/start.sh
+RUN chmod +x /app/scripts/start.sh
+CMD ["/app/scripts/start.sh"]
