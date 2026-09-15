@@ -1,0 +1,84 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            dockerfile: docker/api/Dockerfile
+            target: production
+          - name: admin
+            dockerfile: docker/admin/Dockerfile
+            target: production
+          - name: vendor
+            dockerfile: docker/vendor/Dockerfile
+            target: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        # PRs from forks cannot push (GITHUB_TOKEN is read-only there); build only.
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to CNB (China mirror registry)
+        # Push to docker.cnb.cool too so China nodes can pull fast (ghcr blob CDN is slow there).
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CNB_REGISTRY }}
+          username: ${{ secrets.CNB_USERNAME }}
+          password: ${{ secrets.CNB_PASSWORD }}
+
+      - name: Compute image tags
+        id: tags
+        env:
+          CNB_BASE: ${{ secrets.CNB_REGISTRY }}/${{ secrets.CNB_IMAGE_PREFIX }}
+        run: |
+          GHCR_BASE="${{ env.IMAGE_BASE }}-${{ matrix.name }}"
+          CNB_IMG="${CNB_BASE}/${{ matrix.name }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "tags=${GHCR_BASE}:pr-${{ github.event.number }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            echo "tags=${GHCR_BASE}:latest,${GHCR_BASE}:sha-${{ github.sha }},${CNB_IMG}:latest,${CNB_IMG}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=${GHCR_BASE}:${{ github.ref_name }},${CNB_IMG}:${{ github.ref_name }},${CNB_IMG}:latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            VITE_MERCUR_BACKEND_URL=${{ vars.VITE_MERCUR_BACKEND_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -13,10 +13,23 @@
       "outputs": [".next/**", "!.next/cache/**", ".medusa/**", "dist/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      "outputs": []
     },
-    "check-types": {
-      "dependsOn": ["^check-types"]
+    "lint:fix": {
+      "dependsOn": ["^lint:fix"],
+      "outputs": []
+    },
+    "format:check": {
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": []
     },
     "dev": {
       "cache": false,
