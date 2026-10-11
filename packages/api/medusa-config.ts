@@ -19,7 +19,6 @@ const dashboardAppDir = (name: string) => {
 module.exports = withMercur({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
-    redisUrl: process.env.REDIS_URL,
     http: {
       storeCors: process.env.STORE_CORS!,
       adminCors: process.env.ADMIN_CORS!,

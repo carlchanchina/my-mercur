@@ -13,12 +13,14 @@
       "outputs": [".next/**", "!.next/cache/**", ".medusa/**", "dist/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"],
-      "outputs": []
+      "dependsOn": ["^lint"]
     },
     "lint:fix": {
       "dependsOn": ["^lint:fix"],
       "outputs": []
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
     },
     "format:check": {
       "outputs": []

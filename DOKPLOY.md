@@ -45,7 +45,13 @@ Set these in Dokploy project env, do NOT commit real secrets.
 ### Storefront
 - `NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://api.example.com`
 - `NEXT_PUBLIC_BASE_URL=https://shop.example.com`
+- `NEXT_PUBLIC_DEFAULT_REGION=de`
 - `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=apk_...`
+- `NEXT_PUBLIC_STRIPE_KEY=`（如需 Stripe 支付）
+- `REVALIDATE_SECRET=<random>`
+- `NEXT_PUBLIC_SITE_NAME=My Marketplace`
+- `NEXT_PUBLIC_SITE_DESCRIPTION=My Marketplace`
+- `NEXT_PUBLIC_VENDOR_URL=https://vendor.example.com`
 - `NEXT_PUBLIC_ALGOLIA_APP_ID=`
 - `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY=`
 - `NEXT_PUBLIC_ALGOLIA_INDEX_PREFIX=mercur`
